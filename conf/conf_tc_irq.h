@@ -12,8 +12,13 @@
 
 // application timer
 #define APP_TC                 (&AVR32_TC)
+
 #define APP_TC_CHANNEL         0
 #define APP_TC_IRQ             AVR32_TC_IRQ0
 #define APP_TC_IRQ_GROUP       AVR32_TC_IRQ_GROUP
+
+#define APP_HF_CHANNEL         1
+#define APP_HF_IRQ             AVR32_TC_IRQ1
+#define APP_HF_IRQ_GROUP       AVR32_TC_IRQ_GROUP
 
 #endif
