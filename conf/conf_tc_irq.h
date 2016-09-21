@@ -17,8 +17,9 @@
 #define APP_TC_IRQ             AVR32_TC_IRQ0
 #define APP_TC_IRQ_GROUP       AVR32_TC_IRQ_GROUP
 
-#define APP_HF_CHANNEL         1
-#define APP_HF_IRQ             AVR32_TC_IRQ1
-#define APP_HF_IRQ_GROUP       AVR32_TC_IRQ_GROUP
+// phasor timer
+#define PHASOR_TC_CHANNEL      1
+#define PHASOR_TC_IRQ          AVR32_TC_IRQ1
+#define PHASOR_TC_IRQ_GROUP    AVR32_TC_IRQ_GROUP
 
 #endif

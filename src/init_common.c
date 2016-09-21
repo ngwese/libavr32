@@ -62,65 +62,6 @@ extern void init_tc (void) {
   tc_start(tc, APP_TC_CHANNEL);
 }
 
-// initialize high frequency timer
-extern void init_hf_tc(void) {
-  volatile avr32_tc_t *tc = APP_TC;
-
-  // waveform options
-  static const tc_waveform_opt_t waveform_opt = {
-    .channel  = APP_HF_CHANNEL,      // channel
-    .bswtrg   = TC_EVT_EFFECT_NOOP, // software trigger action on TIOB
-    .beevt    = TC_EVT_EFFECT_NOOP, // external event action
-    .bcpc     = TC_EVT_EFFECT_NOOP, // rc compare action
-    .bcpb     = TC_EVT_EFFECT_NOOP, // rb compare
-    .aswtrg   = TC_EVT_EFFECT_NOOP, // soft trig on TIOA
-    .aeevt    = TC_EVT_EFFECT_NOOP, // etc
-    .acpc     = TC_EVT_EFFECT_NOOP,
-    .acpa     = TC_EVT_EFFECT_NOOP,
-    // Waveform selection: Up mode with automatic trigger(reset) on RC compare.
-    .wavsel   = TC_WAVEFORM_SEL_UP_MODE_RC_TRIGGER,
-    .enetrg   = false,             // external event trig
-    .eevt     = 0,                 // extern event select
-    .eevtedg  = TC_SEL_NO_EDGE,    // extern event edge
-    .cpcdis   = false,             // counter disable when rc compare
-    .cpcstop  = false,             // counter stopped when rc compare
-    .burst    = false,
-    .clki     = false,
-    // Internal source clock 5, connected to fPBA / 128.
-    .tcclks   = TC_CLOCK_SOURCE_TC5
-  };
-
-  // Options for enabling TC interrupts
-  static const tc_interrupt_t tc_interrupt = {
-    .etrgs = 0,
-    .ldrbs = 0,
-    .ldras = 0,
-    .cpcs  = 1, // enable interrupt on RC compare alone
-    .cpbs  = 0,
-    .cpas  = 0,
-    .lovrs = 0,
-    .covfs = 0
-  };
-  // Initialize the timer/counter.
-  tc_init_waveform(tc, &waveform_opt);
-
-  // set timer compare trigger.
-  // we want it to overflow and generate an interrupt every .2 ms
-  // so (1 / fPBA / 128) * RC = 0.001
-  // so RC = fPBA / 128 / 200
-  //tc_write_rc(tc, APP_HF_CHANNEL, (FPBA_HZ / 25600));
-	//tc_write_rc(tc, APP_HF_CHANNEL, (FPBA_HZ / 1280000));
-	tc_write_rc(tc, APP_HF_CHANNEL, (FPBA_HZ /   15360));
-
-	
-
-  // configure the timer interrupt
-  tc_configure_interrupts(tc, APP_HF_CHANNEL, &tc_interrupt);
-
-  // Start the timer/counter.
-  //tc_start(tc, APP_HF_CHANNEL);
-}
-
 
 
 // initialize USB host stack
