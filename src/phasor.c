@@ -6,6 +6,7 @@
 // libavr32
 #include "conf_tc_irq.h"
 #include "phasor.h"
+#include "util.h"
 
 // TEMP
 #include "conf_board.h"
@@ -17,7 +18,7 @@ static phasor_callback_t *_phasor_cb;
 volatile static u16 _now;
 volatile static bool _reset;
 
-static u8 _divisions;
+static u8 _ticks;
 
 // -------------------------------------------------------------------------------
 // functions (internal)
@@ -66,7 +67,7 @@ static void init_phasor_tc(void) {
   // Initialize the timer/counter.
   tc_init_waveform(tc, &waveform_opt);
 
-	// TODO: configure timer to fire at hz * divisions; will need to put
+	// TODO: configure timer to fire at hz * ticks; will need to put
 	// some upper bound on this for safety..
 
 	// set timer compare trigger.
@@ -85,15 +86,11 @@ static void init_phasor_tc(void) {
 __attribute__((__interrupt__))
 static void irq_phasor(void) {
 	// test
-	switch (_now) {
-	case 0:
+	if (_now == 0) {
 		gpio_set_gpio_pin(B10);
-		break;
-	case 4:
+	}
+	else if (_now == _ticks >> 1) {
 		gpio_clr_gpio_pin(B10);
-		break;
-	default:
-		break;
 	}
 
 	//(*_phasor_cb)(now, reset);
@@ -103,7 +100,7 @@ static void irq_phasor(void) {
 	}
 	
 	_now++;
-	if (_now >= _divisions) {
+	if (_now >= _ticks) {
 		_now = 0;
 	}
 	
@@ -128,20 +125,9 @@ void init_phasor(void) {
 	INTC_register_interrupt(&irq_phasor, PHASOR_TC_IRQ, UI_IRQ_PRIORITY);
 }
 
-int phasor_setup(u16 hz, u8 divisions) {
-	// TODO: configure timer to fire at hz * divisions; will need to put
-	// some upper bound on this for safety..
-
-	// set timer compare trigger.
-  // we want it to overflow and generate an interrupt every .2 ms
-  // so (1 / fPBA / 128) * RC = 0.001
-  // so RC = fPBA / 128 / 200
-  //tc_write_rc(tc, PHASOR_TC_CHANNEL, (FPBA_HZ / 25600));
-	//tc_write_rc(tc, PHASOR_TC_CHANNEL, (FPBA_HZ / 1280000));
-	tc_write_rc(APP_TC, PHASOR_TC_CHANNEL, (FPBA_HZ / 15360));
-	_divisions = divisions;
-
-	return 0;
+u16 phasor_setup(u16 hz, u8 ticks) {
+	_ticks = ticks < 1 ? 1 : ticks;
+	return phasor_set_frequency(hz);
 }
 
 int phasor_start(void) {
@@ -167,9 +153,18 @@ void phasor_reset(void) {
 	cpu_irq_enable_level(APP_TC_IRQ_PRIORITY);
 }
 	
-int phasor_set_frequency(u16 hz) {
-	// TODO
-	return 0;
+u16 phasor_set_frequency(u16 hz) {
+	u16 rate, rc;
+
+	// limit range, 7Hz is about as slow as possible with a 16 bit
+	// counter; 4kHz is just a safety, depending on what happens in the
+	// phasor callback 4kHz might be too fast.
+	rate = uclip(hz * _ticks, 7, 4000);
+
+	rc = FPBA_HZ / (128 * rate);
+	tc_write_rc(APP_TC, PHASOR_TC_CHANNEL, rc);
+
+	return rate;
 }
 
 void phasor_set_callback(phasor_callback_t *cb) {
