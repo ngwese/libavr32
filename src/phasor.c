@@ -9,8 +9,8 @@
 #include "util.h"
 
 // TEMP
-#include "conf_board.h"
-#include "gpio.h"
+//#include "conf_board.h"
+//#include "gpio.h"
 
 
 static phasor_callback_t *_phasor_cb;
@@ -85,15 +85,15 @@ static void init_phasor_tc(void) {
 
 __attribute__((__interrupt__))
 static void irq_phasor(void) {
-	// test
-	if (_now == 0) {
-		gpio_set_gpio_pin(B10);
-	}
-	else if (_now == _ticks >> 1) {
-		gpio_clr_gpio_pin(B10);
-	}
+	/* // test */
+	/* if (_now == 0) { */
+	/* 	gpio_set_gpio_pin(B10); */
+	/* } */
+	/* else if (_now == _ticks >> 1) { */
+	/* 	gpio_clr_gpio_pin(B10); */
+	/* } */
 
-	//(*_phasor_cb)(now, reset);
+	(*_phasor_cb)(_now, _reset);
 
 	if (_now == 0 && _reset) {
 		_reset = false;
@@ -159,7 +159,7 @@ u16 phasor_set_frequency(u16 hz) {
 	// limit range, 7Hz is about as slow as possible with a 16 bit
 	// counter; 4kHz is just a safety, depending on what happens in the
 	// phasor callback 4kHz might be too fast.
-	rate = uclip(hz * _ticks, 7, 4000);
+	rate = uclip(hz, 7, 4000);
 
 	rc = FPBA_HZ / (128 * rate);
 	tc_write_rc(APP_TC, PHASOR_TC_CHANNEL, rc);

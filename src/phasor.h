@@ -11,13 +11,13 @@ typedef void (phasor_callback_t)(u8 now, bool reset);
 void init_phasor(void);
 
 // configure behavior
-int phasor_setup(u16 hz, u8 divisions);
+u16 phasor_setup(u16 hz, u8 divisions);
 
 int phasor_start(void);
 int phasor_stop(void);
 void phasor_reset(void);
 
-int phasor_set_frequency(u16 hz);
+u16 phasor_set_frequency(u16 hz);
 void phasor_set_callback(phasor_callback_t *cb);
 
 #endif
