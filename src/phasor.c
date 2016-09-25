@@ -8,11 +8,6 @@
 #include "phasor.h"
 #include "util.h"
 
-// TEMP
-//#include "conf_board.h"
-//#include "gpio.h"
-
-
 static phasor_callback_t *_phasor_cb;
 
 volatile static u16 _now;
@@ -67,15 +62,7 @@ static void init_phasor_tc(void) {
   // Initialize the timer/counter.
   tc_init_waveform(tc, &waveform_opt);
 
-	// TODO: configure timer to fire at hz * ticks; will need to put
-	// some upper bound on this for safety..
-
-	// set timer compare trigger.
-  // we want it to overflow and generate an interrupt every .2 ms
-  // so (1 / fPBA / 128) * RC = 0.001
-  // so RC = fPBA / 128 / 200
-  //tc_write_rc(tc, PHASOR_TC_CHANNEL, (FPBA_HZ / 25600));
-	//tc_write_rc(tc, PHASOR_TC_CHANNEL, (FPBA_HZ / 1280000));
+	// set a default rate
 	tc_write_rc(tc, PHASOR_TC_CHANNEL, (FPBA_HZ / 25600));
 
   // configure the timer interrupt
@@ -85,14 +72,6 @@ static void init_phasor_tc(void) {
 
 __attribute__((__interrupt__))
 static void irq_phasor(void) {
-	/* // test */
-	/* if (_now == 0) { */
-	/* 	gpio_set_gpio_pin(B10); */
-	/* } */
-	/* else if (_now == _ticks >> 1) { */
-	/* 	gpio_clr_gpio_pin(B10); */
-	/* } */
-
 	(*_phasor_cb)(_now, _reset);
 
 	if (_now == 0 && _reset) {
@@ -133,11 +112,8 @@ u16 phasor_setup(u16 hz, u8 ticks) {
 int phasor_start(void) {
 	_now = 0;
 	_reset = false;
-	print_dbg("\r\n>> pre tc_start");
-	int i = tc_start(APP_TC, PHASOR_TC_CHANNEL);
-	print_dbg("\r\n>> post tc_start: ");
-	print_dbg_ulong(i);
-	return i;
+
+	return tc_start(APP_TC, PHASOR_TC_CHANNEL);
 }
 
 int phasor_stop(void) {
@@ -156,12 +132,14 @@ void phasor_reset(void) {
 u16 phasor_set_frequency(u16 hz) {
 	u16 rate, rc;
 
-	// limit range, 7Hz is about as slow as possible with a 16 bit
+	// limit range, 8Hz is about as slow as possible with a 16 bit
 	// counter; 4kHz is just a safety, depending on what happens in the
 	// phasor callback 4kHz might be too fast.
-	rate = uclip(hz, 7, 4000);
+	rate = uclip(hz, 8, 4000);
 
 	rc = FPBA_HZ / (128 * rate);
+	//print_dbg("\r\n phasor rc: ");
+	//print_dbg_ulong(rc);
 	tc_write_rc(APP_TC, PHASOR_TC_CHANNEL, rc);
 
 	return rate;
