@@ -23,8 +23,8 @@
 // the buffer will start filling up if events come in faster than the polling rate
 // the more full the buffer, the longer we'll spend in the usb read ISR parsing it...
 // so it is a tradeoff.
-#define MIDI_RX_EVENT_BUF_SIZE 16
-#define MIDI_TX_EVENT_BUF_SIZE 16
+#define MIDI_RX_EVENT_BUF_SIZE 32
+#define MIDI_TX_EVENT_BUF_SIZE 8
 
 
 //------------------------------
@@ -43,9 +43,10 @@ typedef union {
 // 
 
 // buffers must be word aligned per docs on uhd_ep_run()
+static volatile u32 rxBusy = 0;
+//static u32 rxBytes = 0;
+
 COMPILER_WORD_ALIGNED static usb_midi_event_t rxBuf[MIDI_RX_EVENT_BUF_SIZE];
-static volatile bool rxBusy = false;
-static u32 rxBytes = 0;
 
 // try using an output buffer and adding the extra nib we saw on input ... 
 COMPILER_WORD_ALIGNED static usb_midi_event_t txBuf[MIDI_TX_EVENT_BUF_SIZE];
@@ -60,21 +61,40 @@ static event_t ev = { .type = kEventMidiPacket, .data = 0x00000000 };
 //----- static functions
 
 // parse the buffer and spawn appropriate events
-static void midi_parse_event(void) {
+static void midi_parse_event(u32 rxBytes) {
   int i;
   int eventCount = rxBytes >> 2; // assume we receive full events, partials are dropped
 
+	print_dbg("\r\n rxBytes: ");
+	print_dbg_ulong(rxBytes);
+	print_dbg(", ec: ");
+	print_dbg_ulong(eventCount);
+	
   union { u32 data; s32 sdata; } buf;
 
   usb_midi_event_t* rxEvent = &(rxBuf[0]);
 
   for (i = 0; i < eventCount; i++) {
+		print_dbg("\r\n>> parse: ");
+		print_dbg_hex(rxEvent->header);
+		print_dbg(", ");
+		print_dbg_hex(rxEvent->msg[0]);
+		print_dbg(" ");
+		print_dbg_hex(rxEvent->msg[1]);
+		print_dbg(" ");
+		print_dbg_hex(rxEvent->msg[2]);
+		
     buf.data = (rxEvent->raw) << 8;
     ev.data = buf.sdata;
     event_post(&ev);
 
     ++rxEvent;
   }
+	print_dbg("\r\n ...");
+}
+
+static void midi_reset_done(void) {
+	print_dbg("\r\n midi_reset_done()");
 }
 
 // callback for the non-blocking asynchronous read.
@@ -82,14 +102,29 @@ static void midi_rx_done(usb_add_t add,
                          usb_ep_t ep,
                          uhd_trans_status_t stat,
                          iram_size_t nb) {
-  if (nb > 0) {
-    if (stat == UHD_TRANS_NOERROR) {
-      rxBytes = nb;
-      midi_parse_event();
-    }
+
+	print_dbg("\r\n midi_rx_done called, nb: ");
+	print_dbg_ulong(nb);
+
+	if (uhd_is_suspend()) {
+		print_dbg(" SUSP");
+	}
+	
+	switch (stat) {
+	case UHD_TRANS_NOERROR:
+		if (nb > 0) midi_parse_event(nb);
+		break;
+	case UHD_TRANS_TIMEOUT:
+		//uhd_send_reset(midi_reset_done);
+	default:
+		print_dbg(" >> error: ");
+		print_dbg_ulong(stat);
+		break;
   }
 
-  rxBusy = false;
+
+	
+  rxBusy = 0;
 }
 
 // callback for the non-blocking asynchronous write.
@@ -111,18 +146,30 @@ static void midi_tx_done(usb_add_t add,
 
 // read and spawn events (non-blocking)
 extern void midi_read(void) {
-  if (rxBusy == false) {
-    rxBytes = 0;
-    rxBusy = true;
-    if (!uhi_midi_in_run((u8*)rxBuf, sizeof rxBuf, &midi_rx_done)) {
+  if (rxBusy == 0) {
+    //rxBytes = 0;
+    rxBusy = 1;
+		if (uhi_midi_in_run((u8*)rxBuf, sizeof rxBuf, &midi_rx_done)) {
+			print_dbg("\r\n uhi_midi_in_run // ");
+			print_dbg_ulong(sizeof rxBuf);
+		}
+		else {
       // hm, every uhd enpoint run always returns error...
       // ...because most of the time a rx job is already running, by only
       // running the endpoint read after midi_rx_done has set rxBusy to false
       // the errors here stop.
       print_dbg("\r\n midi rx endpoint error");
-    }
-  }
-  return;
+		}
+	}
+	else {
+		rxBusy++;
+		if (rxBusy >= 1000) {
+			if (uhc_is_suspend()) {
+				print_dbg("\r\n usb suspend enabled");
+			}
+			rxBusy = 1;
+		}
+	}
 }
 
 // write to MIDI device
@@ -228,13 +275,16 @@ extern bool midi_write(const u8* data, u32 bytes) {
 extern void midi_change(uhc_device_t* dev, u8 plug) {
   event_t e;
 
+	// reset busy flags
+	rxBusy = txBusy = 0;
+	
   if (plug) { 
-    e.type = kEventMidiConnect; 
+    e.type = kEventMidiConnect;
   } else {
     e.type = kEventMidiDisconnect;
   }
 
   // posting an event so the main loop can respond
-  event_post(&e); 
+  event_post(&e);
 }
 

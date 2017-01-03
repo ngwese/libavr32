@@ -142,61 +142,65 @@ uhc_enum_status_t uhi_midi_install(uhc_device_t* dev) {
       print_dbg("\r\n iInterface : 0x");
       print_dbg_hex( ptr_iface->iInterface );
 
-      print_dbg("\r\n\r\n\r\n");
+      print_dbg("\r\n");
 #endif
-      
 
       if ( ( ptr_iface->bInterfaceClass == USB_AUDIO_IFACE_CLASS ) 
-	   && (ptr_iface->bInterfaceSubClass == USB_MIDI_IFACE_SUBCLASS) ) {
+					 && (ptr_iface->bInterfaceSubClass == USB_MIDI_IFACE_SUBCLASS) ) {
 
 #if UHI_MIDI_PRINT_DBG
-	print_dbg("\r\n class/subclass matches audio/MIDI. ");
+				print_dbg("\r\n class/subclass matches audio/MIDI. ");
 #endif
-	iface_supported = true;
-	uhi_midi_dev.ep_in = 0;
-	uhi_midi_dev.ep_out = 0;
+				iface_supported = true;
+				uhi_midi_dev.ep_in = 0;
+				uhi_midi_dev.ep_out = 0;
       } else {
 	//// we want to check for class-specific MS interface? (type: .... TODO)
 #if UHI_MIDI_PRINT_DBG
-	print_dbg("\r\n uhi_midi_install ignoring interface; class: 0x");
+				print_dbg("\r\n uhi_midi_install ignoring interface; class: 0x");
        	print_dbg_hex(ptr_iface->bInterfaceClass);
-	print_dbg(" ; subclass: 0x");
-	print_dbg_hex(ptr_iface->bInterfaceSubClass);
+				print_dbg(" ; subclass: 0x");
+				print_dbg_hex(ptr_iface->bInterfaceSubClass);
 #endif
 		      
-	iface_supported = false;
+				iface_supported = false;
       }
       break;
 
     case USB_DT_ENDPOINT:
       if (!iface_supported) {
-	break;
+				break;
       }
 
       if (!uhd_ep_alloc(dev->address, (usb_ep_desc_t*)ptr_iface)) {
-	print_dbg("\r\n endpoint allocation failed");
-	return UHC_ENUM_HARDWARE_LIMIT;
+				print_dbg("\r\n endpoint allocation failed");
+				return UHC_ENUM_HARDWARE_LIMIT;
       }
 
+			print_dbg("\r\n endpoint alloc; wMaxPacketSize: ");
+			print_dbg_ulong(le16_to_cpu(((usb_ep_desc_t*)ptr_iface)->wMaxPacketSize));
+			
+			
       switch(((usb_ep_desc_t*)ptr_iface)->bmAttributes & USB_EP_TYPE_MASK) {
       case USB_EP_TYPE_BULK:
        	print_dbg("\r\n allocating bulk endpoint ( ");
-	if (((usb_ep_desc_t*)ptr_iface)->bEndpointAddress & USB_EP_DIR_IN) {
-	  print_dbg(" input )");
-	  uhi_midi_dev.ep_in = ((usb_ep_desc_t*)ptr_iface)->bEndpointAddress;
-
-	} else {
-	  print_dbg(" output )");
-	  uhi_midi_dev.ep_out = ((usb_ep_desc_t*)ptr_iface)->bEndpointAddress;
-	}
-	break;
+				if (((usb_ep_desc_t*)ptr_iface)->bEndpointAddress & USB_EP_DIR_IN) {
+					print_dbg(" input )");
+					uhi_midi_dev.ep_in = ((usb_ep_desc_t*)ptr_iface)->bEndpointAddress;
+					
+				} else {
+					print_dbg(" output )");
+					uhi_midi_dev.ep_out = ((usb_ep_desc_t*)ptr_iface)->bEndpointAddress;
+				}
+				break;
       default:
-	print_dbg("\r\n midi install weirdness: allocated endpoint, not recognizing type.");
-	
-	;; // ignore endpoint (shouldn't get here)
-	break;
+				print_dbg("\r\n midi install weirdness: allocated endpoint, not recognizing type.");
+				
+				;; // ignore endpoint (shouldn't get here)
+				break;
       }
       break;
+
     default:
 #if UHI_MIDI_PRINT_DBG
       print_dbg("\r\n uhi_midi_install ignoring descriptor; type: 0x");
@@ -241,6 +245,7 @@ void uhi_midi_enable(uhc_device_t* dev) {
   //  UHI_MIDI_CHANGE(dev, true);
   midi_change(dev, true);  
   print_dbg("\r\n finished uhi_midi_enable");
+	
 }
 
 void uhi_midi_uninstall(uhc_device_t* dev) {
@@ -249,7 +254,7 @@ void uhi_midi_uninstall(uhc_device_t* dev) {
   }
   uhi_midi_dev.dev = NULL;
   Assert(uhi_midi_dev.report!=NULL);
-  midi_change(dev, false);  
+  midi_change(dev, false);
 }
 
 bool uhi_midi_in_run(uint8_t * buf, iram_size_t buf_size,
