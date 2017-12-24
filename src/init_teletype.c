@@ -27,6 +27,8 @@ static volatile u8 tcOverflow = 0;
 static const u64 tcMax = (U64)0x7fffffff;
 static const u64 tcMaxInv = (u64)0x10000000;
 
+static volatile u8 trLevels = 0;
+
 //----------------------
 //---- static functions
 // interrupt handlers
@@ -75,14 +77,17 @@ static void irq_tc(void) {
 // interrupt handler for PA00-PA07
 __attribute__((__interrupt__))
 static void irq_port0_line0(void) {
+	u8 levels = 0;
   for(int i=0;i<8;i++) {
     if(gpio_get_pin_interrupt_flag(i)) {
       // print_dbg("\r\n # A00");
       event_t e = { .type = kEventTrigger, .data = i };
       event_post(&e);
       gpio_clear_pin_interrupt_flag(i);
+			levels |= 1 << i;
     }
   }
+	trLevels = levels;
 }
 
 // interrupt handler for PA08-PA15
@@ -231,4 +236,8 @@ extern void init_spi (void) {
 
 extern u64 get_ticks(void) {
 	return tcTicks;
+}
+
+extern u8 get_tr_levels(void) {
+	return trLevels;
 }
