@@ -3,9 +3,10 @@
 PRJ_ROOT = ..
 
 INC_PATH = \
-	test/include		                   \
+	test/include		                           \
 	src                                        \
 	src/json                                   \
+	src/libfixmath                             \
 	src/usb                                    \
 	src/usb/ftdi                               \
 	src/usb/hid                                \
