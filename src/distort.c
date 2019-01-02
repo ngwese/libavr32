@@ -32,7 +32,7 @@ void distort_init(distort_t *d) {
 
     distort_set_ratio(d, fix16_one);
     distort_set_shift(d, 0);
-    distort_set_bend(d, fix16_half);
+    distort_set_bend(d, 0);
     distort_set_compress(d, fix16_one);
 }
 
@@ -97,6 +97,6 @@ fix16_t distort_shape(distort_t *d, fix16_t in) {
     }
     // printf("            v: 0x%.8x\n", v);
 
-    // comp is multiply the output value and clamp the output
+    // comp is multiply the output value and clamp to 1
     return fix16_clamp(fix16_mul(v, d->param.compress), fix16_one);
 }
