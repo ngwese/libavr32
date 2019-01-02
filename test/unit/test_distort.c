@@ -125,6 +125,15 @@ void test_distort_shape_bend(void) {
     );
 }
 
+void test_distort_shape_comp(void) {
+    setup();
+    distort_set_compress(&d, fix16_two);
+    TEST_ASSERT_EQUAL_UINT32(0, distort_shape(&d, 0));
+    TEST_ASSERT_EQUAL_UINT32(fix16_one, distort_shape(&d, fix16_from_float(0.7)));
+    TEST_ASSERT_EQUAL_UINT32(fix16_one, distort_shape(&d, fix16_one));
+    TEST_ASSERT_EQUAL_UINT32(fix16_from_float(0.5), distort_shape(&d, fix16_from_float(0.25)));
+}
+
 int main(void) {
     UNITY_BEGIN();
 
@@ -133,6 +142,7 @@ int main(void) {
     RUN_TEST(test_distort_phase_ratio);
     RUN_TEST(test_distort_phase_shift);
     RUN_TEST(test_distort_shape_bend);
+    RUN_TEST(test_distort_shape_comp);
 
     return UNITY_END();
 }
