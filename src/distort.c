@@ -68,7 +68,7 @@ fix16_t distort_phase(distort_t *d, fix16_t phase) {
 }
 
 fix16_t distort_shape(distort_t *d, fix16_t in) {
-    fix16_t s, v, e, b;
+    fix16_t v, e, b;
 
     if (d->param.bend < 0) {
         // inverse exp...
