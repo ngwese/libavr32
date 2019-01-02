@@ -351,3 +351,10 @@ int main(void) {
 u32 time_now(void) {
 	return 123909;
 }
+
+u8 irqs_pause(void) {
+  return 0;
+}
+
+void irqs_resume(u8 irq_flags) {
+}
