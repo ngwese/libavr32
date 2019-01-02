@@ -6,6 +6,11 @@
 // this
 #include "distort.c"
 
+// temp
+#include "fix.h"
+#include "fix.c"
+
+
 distort_t d;
 
 void setup(void) {
@@ -73,6 +78,53 @@ void test_distort_phase_shift(void) {
     TEST_ASSERT_EQUAL_UINT32(mid, distort_phase(&d, three_quarter));
 }
 
+void test_distort_shape_bend(void) {
+    fix16_t quarter = fix16_from_float(0.25);
+    fix16_t mid = fix16_from_float(0.5);
+    fix16_t three_quarter = fix16_mul(quarter, fix16_from_int(3));
+
+    setup();
+
+    // validate bend 0 == lin
+    // printf("validate bend 0 == lin\n");
+    distort_set_bend(&d, 0);
+    TEST_ASSERT_EQUAL_UINT32(0, distort_shape(&d, 0));
+    TEST_ASSERT_EQUAL_UINT32(fix16_one, distort_shape(&d, fix16_one));
+    TEST_ASSERT_EQUAL_UINT32(mid, distort_shape(&d, mid));
+
+    // validate +/- symmetry of ^2 without blending
+    // printf("validate +/- symmetry of ^2 without blending\n");
+    distort_set_bend(&d, fix16_one);
+    TEST_ASSERT_EQUAL_UINT32(fix16_one, distort_shape(&d, fix16_one));
+    fix16_t exp_pos = distort_shape(&d, three_quarter);
+
+    distort_set_bend(&d, fix16_neg_one);
+    TEST_ASSERT_EQUAL_UINT32(fix16_one, distort_shape(&d, fix16_one));
+    fix16_t exp_neg = distort_shape(&d, quarter);
+    /*
+    char buf[256];
+    print_fix16(buf, exp_pos);
+    printf(" bend  1.0 @ 0.75 = %s\n", buf);
+    print_fix16(buf, exp_neg);
+    printf(" bend -1.0 @ 0.25 = %s\n", buf);
+    */
+    TEST_ASSERT_EQUAL_UINT32(exp_pos, fix16_sub(fix16_one, exp_neg));
+
+    // validate +/- symmetry and blending between ^2 and lin
+    // printf("validate +/- symmetry and blending between ^2 and lin\n");
+    distort_set_bend(&d, fix16_from_float(0.5));
+    fix16_t blend_pos = distort_shape(&d, three_quarter);
+    distort_set_bend(&d, fix16_from_float(-0.5));
+    fix16_t blend_neg = distort_shape(&d, quarter);
+    // MAINT: the following comparison is sensitive to precision, using bend of
+    // +/- 0.5 allows the test to pass. it would be better to assert that the
+    // two values are within some range of each other.
+    TEST_ASSERT_EQUAL_UINT32(
+        fix16_sub(three_quarter, blend_pos),
+        fix16_sub(blend_neg, quarter)
+    );
+}
+
 int main(void) {
     UNITY_BEGIN();
 
@@ -80,6 +132,7 @@ int main(void) {
     RUN_TEST(test_distort_phase_default_is_identity);
     RUN_TEST(test_distort_phase_ratio);
     RUN_TEST(test_distort_phase_shift);
+    RUN_TEST(test_distort_shape_bend);
 
     return UNITY_END();
 }
